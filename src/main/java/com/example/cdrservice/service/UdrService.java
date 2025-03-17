@@ -26,6 +26,14 @@ public class UdrService {
     private CdrRecordRepository cdrRecordRepository;
 
     public String generateUdrReport(String msisdn, String month) {
+        // Нормализация номера
+        msisdn = normalizeMsisdn(msisdn);
+
+        // Проверяем, существует ли указанный номер в базе данных
+        if (cdrRecordRepository.doesNotExistByCallerNumberOrReceiverNumber(msisdn)) {
+            return "No records found for the specified MSISDN.";
+        }
+
         LocalDateTime start;
         LocalDateTime end;
 
@@ -86,6 +94,14 @@ public class UdrService {
     }
 
     public String generateCdrReport(String msisdn, String startDate, String endDate) {
+        // Нормализация номера
+        msisdn = normalizeMsisdn(msisdn);
+
+        // Проверяем, существует ли указанный номер в базе данных
+        if (cdrRecordRepository.doesNotExistByCallerNumberOrReceiverNumber(msisdn)) {
+            throw new RuntimeException("No records found for the specified MSISDN.");
+        }
+
         LocalDateTime start = LocalDateTime.parse(startDate);
         LocalDateTime end = LocalDateTime.parse(endDate);
 
@@ -149,5 +165,10 @@ public class UdrService {
         long minutes = duration.toMinutes() % 60;
         long seconds = duration.getSeconds() % 60;
         return String.format("%02d:%02d:%02d", hours, minutes, seconds);
+    }
+
+    private String normalizeMsisdn(String msisdn) {
+        // Убираем лишние символы и приводим к стандартному формату
+        return msisdn.replaceAll("[^0-9]", ""); // Оставляем только цифры
     }
 }

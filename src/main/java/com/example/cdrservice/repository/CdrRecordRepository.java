@@ -10,6 +10,10 @@ import java.util.List;
 
 @Repository
 public interface CdrRecordRepository extends JpaRepository<CdrRecord, Long> {
+
+    @Query("SELECT CASE WHEN COUNT(r) = 0 THEN true ELSE false END FROM CdrRecord r WHERE r.callerNumber = :msisdn OR r.receiverNumber = :msisdn")
+    boolean doesNotExistByCallerNumberOrReceiverNumber(String msisdn);
+
     @Query("SELECT MIN(r.startTime) FROM CdrRecord r")
     LocalDateTime findEarliestStartTime();
 

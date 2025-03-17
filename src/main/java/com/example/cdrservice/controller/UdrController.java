@@ -13,13 +13,21 @@ public class UdrController {
     private UdrService udrService;
 
     @GetMapping("/{msisdn}")
-    public String getUdrReport(@PathVariable String msisdn, @RequestParam(required = false) String month) {
-        return udrService.generateUdrReport(msisdn, month);
+    public ResponseEntity<String> getUdrReport(@PathVariable String msisdn, @RequestParam(required = false) String month) {
+        String report = udrService.generateUdrReport(msisdn, month);
+        if (report.contains("No records found")) {
+            return ResponseEntity.status(404).body(report);
+        }
+        return ResponseEntity.ok(report);
     }
 
     @GetMapping("/all")
-    public String getAllUdrReports(@RequestParam String month) {
-        return udrService.generateAllUdrReports(month);
+    public ResponseEntity<String> getAllUdrReports(@RequestParam String month) {
+        String reports = udrService.generateAllUdrReports(month);
+        if (reports.contains("No records found")) {
+            return ResponseEntity.status(404).body(reports);
+        }
+        return ResponseEntity.ok(reports);
     }
 
     @GetMapping("/cdr-report/{msisdn}")
