@@ -1,7 +1,6 @@
 package com.example.cdrservice.controller;
 
 import com.example.cdrservice.service.UdrService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -9,8 +8,11 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/udr")
 public class UdrController {
 
-    @Autowired
-    private UdrService udrService;
+    private final UdrService udrService;
+
+    public UdrController(UdrService udrService) {
+        this.udrService = udrService;
+    }
 
     @GetMapping("/{msisdn}")
     public ResponseEntity<String> getUdrReport(@PathVariable String msisdn, @RequestParam(required = false) String month) {

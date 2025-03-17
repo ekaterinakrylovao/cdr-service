@@ -2,7 +2,6 @@ package com.example.cdrservice.service;
 
 import com.example.cdrservice.entity.CdrRecord;
 import com.example.cdrservice.repository.CdrRecordRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.io.BufferedWriter;
@@ -22,8 +21,11 @@ import java.util.UUID;
 @Service
 public class UdrService {
 
-    @Autowired
-    private CdrRecordRepository cdrRecordRepository;
+    private final CdrRecordRepository cdrRecordRepository;
+
+    public UdrService(CdrRecordRepository cdrRecordRepository) {
+        this.cdrRecordRepository = cdrRecordRepository;
+    }
 
     public String generateUdrReport(String msisdn, String month) {
         // Нормализация номера

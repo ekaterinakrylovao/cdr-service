@@ -4,7 +4,6 @@ import com.example.cdrservice.entity.Subscriber;
 import com.example.cdrservice.repository.CdrRecordRepository;
 import com.example.cdrservice.repository.SubscriberRepository;
 import com.example.cdrservice.service.CdrGeneratorService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
@@ -14,14 +13,16 @@ import java.util.List;
 @Component
 public class DataInitializer implements CommandLineRunner {
 
-    @Autowired
-    private SubscriberRepository subscriberRepository;
+    private final SubscriberRepository subscriberRepository;
+    private final CdrRecordRepository cdrRecordRepository;
+    private final CdrGeneratorService cdrGeneratorService;
 
-    @Autowired
-    private CdrRecordRepository cdrRecordRepository;
-
-    @Autowired
-    private CdrGeneratorService cdrGeneratorService;
+    // Конструктор для внедрения зависимостей
+    public DataInitializer(SubscriberRepository subscriberRepository, CdrRecordRepository cdrRecordRepository, CdrGeneratorService cdrGeneratorService) {
+        this.subscriberRepository = subscriberRepository;
+        this.cdrRecordRepository = cdrRecordRepository;
+        this.cdrGeneratorService = cdrGeneratorService;
+    }
 
     @Override
     public void run(String... args) throws Exception {

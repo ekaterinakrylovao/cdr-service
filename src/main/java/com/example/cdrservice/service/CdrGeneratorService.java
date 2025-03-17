@@ -4,7 +4,6 @@ import com.example.cdrservice.entity.CdrRecord;
 import com.example.cdrservice.entity.Subscriber;
 import com.example.cdrservice.repository.CdrRecordRepository;
 import com.example.cdrservice.repository.SubscriberRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -16,11 +15,13 @@ import java.util.Random;
 @Service
 public class CdrGeneratorService {
 
-    @Autowired
-    private CdrRecordRepository cdrRecordRepository;
+    private final CdrRecordRepository cdrRecordRepository;
+    private final SubscriberRepository subscriberRepository;
 
-    @Autowired
-    private SubscriberRepository subscriberRepository;
+    public CdrGeneratorService(CdrRecordRepository cdrRecordRepository, SubscriberRepository subscriberRepository) {
+        this.cdrRecordRepository = cdrRecordRepository;
+        this.subscriberRepository = subscriberRepository;
+    }
 
     public void generateCdrRecords() {
         List<Subscriber> subscribers = subscriberRepository.findAll();
