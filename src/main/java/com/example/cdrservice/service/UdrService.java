@@ -26,14 +26,21 @@ public class UdrService {
     private CdrRecordRepository cdrRecordRepository;
 
     public String generateUdrReport(String msisdn, String month) {
-        // Преобразуем месяц в диапазон дат
-        LocalDateTime startOfMonth = LocalDateTime.parse(month + "-01T00:00:00");
-        LocalDateTime endOfMonth = startOfMonth.plusMonths(1).minusSeconds(1);
+        LocalDateTime start;
+        LocalDateTime end;
 
-        // Ищем все записи за указанный месяц
-        List<CdrRecord> records = cdrRecordRepository.findByStartTimeBetween(startOfMonth, endOfMonth);
+        if (month != null) {
+            // Формируем диапазон дат для указанного месяца
+            start = LocalDateTime.parse(month + "-01T00:00:00");
+            end = start.plusMonths(1).minusSeconds(1);
+        } else {
+            // Берем весь тарифицируемый период
+            start = cdrRecordRepository.findEarliestStartTime();
+            end = cdrRecordRepository.findLatestEndTime();
+        }
 
-        // Рассчитываем длительность звонков
+        List<CdrRecord> records = cdrRecordRepository.findByStartTimeBetween(start, end);
+
         Map<String, Duration> durations = calculateDurations(records, msisdn);
 
         return formatUdrReport(
