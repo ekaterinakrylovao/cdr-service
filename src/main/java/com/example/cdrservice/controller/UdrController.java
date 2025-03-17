@@ -24,7 +24,11 @@ public class UdrController {
 
     @GetMapping("/cdr-report/{msisdn}")
     public ResponseEntity<String> generateCdrReport(@PathVariable String msisdn, @RequestParam String startDate, @RequestParam String endDate) {
-        String reportId = udrService.generateCdrReport(msisdn, startDate, endDate);
-        return ResponseEntity.ok("Report generated with ID: " + reportId);
+        try {
+            String reportId = udrService.generateCdrReport(msisdn, startDate, endDate);
+            return ResponseEntity.ok("Report generated with ID: " + reportId);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(404).body(e.getMessage());
+        }
     }
 }

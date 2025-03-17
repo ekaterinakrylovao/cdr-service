@@ -51,6 +51,10 @@ public class UdrService {
         // Ищем все записи за указанный месяц
         List<CdrRecord> records = cdrRecordRepository.findByStartTimeBetween(startOfMonth, endOfMonth);
 
+        if (records.isEmpty()) {
+            return "No records found for the specified period.";
+        }
+
         // Собираем уникальные номера абонентов
         Set<String> allMsisdns = new HashSet<>();
         records.forEach(record -> {
@@ -103,7 +107,7 @@ public class UdrService {
             throw new RuntimeException("Failed to generate CDR report", e);
         }
 
-        return "Report generated with ID: " + reportId;
+        return reportId;
     }
 
     private Map<String, Duration> calculateDurations(List<CdrRecord> records, String msisdn) {
