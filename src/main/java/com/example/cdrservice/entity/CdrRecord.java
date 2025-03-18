@@ -19,10 +19,6 @@ public class CdrRecord {
         return id;
     }
 
-    public void setId(Long id) {
-        this.id = id;
-    }
-
     public String getCallType() {
         return callType;
     }

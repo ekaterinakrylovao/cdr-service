@@ -10,14 +10,6 @@ public class Subscriber {
 
     private String msisdn;
 
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-
     public String getMsisdn() {
         return msisdn;
     }
