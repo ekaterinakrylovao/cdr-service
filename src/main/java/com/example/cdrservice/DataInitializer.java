@@ -10,6 +10,10 @@ import org.springframework.stereotype.Component;
 import java.util.Arrays;
 import java.util.List;
 
+/**
+ * Компонент для инициализации данных в базе данных при запуске приложения.
+ * Очищает таблицы, создает список абонентов и генерирует CDR-записи.
+ */
 @Component
 public class DataInitializer implements CommandLineRunner {
 
@@ -17,7 +21,9 @@ public class DataInitializer implements CommandLineRunner {
     private final CdrRecordRepository cdrRecordRepository;
     private final CdrGeneratorService cdrGeneratorService;
 
-    public DataInitializer(SubscriberRepository subscriberRepository, CdrRecordRepository cdrRecordRepository, CdrGeneratorService cdrGeneratorService) {
+    public DataInitializer(SubscriberRepository subscriberRepository,
+                           CdrRecordRepository cdrRecordRepository,
+                           CdrGeneratorService cdrGeneratorService) {
         this.subscriberRepository = subscriberRepository;
         this.cdrRecordRepository = cdrRecordRepository;
         this.cdrGeneratorService = cdrGeneratorService;
