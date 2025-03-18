@@ -24,8 +24,4 @@ public interface CdrRecordRepository extends JpaRepository<CdrRecord, Long> {
     LocalDateTime findLatestEndTime();
 
     List<CdrRecord> findByStartTimeBetween(LocalDateTime start, LocalDateTime end);
-
-    List<CdrRecord> findByCallerNumberAndStartTimeBetweenOrReceiverNumberAndStartTimeBetween(
-            String callerNumber, LocalDateTime start1, LocalDateTime end1,
-            String receiverNumber, LocalDateTime start2, LocalDateTime end2);
 }
