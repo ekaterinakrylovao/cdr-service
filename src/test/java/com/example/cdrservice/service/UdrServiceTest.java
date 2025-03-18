@@ -13,6 +13,8 @@ import java.util.Arrays;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -48,7 +50,8 @@ class UdrServiceTest {
         record2.setStartTime(LocalDateTime.of(2024, 3, 1, 11, 0));
         record2.setEndTime(LocalDateTime.of(2024, 3, 1, 11, 10));
 
-        when(cdrRecordRepository.findByStartTimeBetween(
+        when(cdrRecordRepository.findRecordsForMsisdnInPeriod(
+                "79991112233",
                 LocalDateTime.of(2024, 3, 1, 0, 0),
                 LocalDateTime.of(2024, 3, 31, 23, 59, 59)))
                 .thenReturn(Arrays.asList(record1, record2));
@@ -83,7 +86,8 @@ class UdrServiceTest {
         record.setStartTime(LocalDateTime.of(2024, 3, 1, 11, 0));
         record.setEndTime(LocalDateTime.of(2024, 3, 1, 11, 10));
 
-        when(cdrRecordRepository.findByStartTimeBetween(
+        when(cdrRecordRepository.findRecordsForMsisdnInPeriod(
+                "79991112233",
                 LocalDateTime.of(2024, 3, 1, 0, 0),
                 LocalDateTime.of(2024, 3, 31, 23, 59, 59)))
                 .thenReturn(List.of(record));
@@ -106,7 +110,8 @@ class UdrServiceTest {
         record.setStartTime(LocalDateTime.of(2024, 3, 1, 10, 0));
         record.setEndTime(LocalDateTime.of(2024, 3, 1, 10, 5));
 
-        when(cdrRecordRepository.findByStartTimeBetween(
+        when(cdrRecordRepository.findRecordsForMsisdnInPeriod(
+                "79991112233",
                 LocalDateTime.of(2024, 3, 1, 0, 0),
                 LocalDateTime.of(2024, 3, 31, 23, 59, 59)))
                 .thenReturn(List.of(record));
@@ -171,10 +176,7 @@ class UdrServiceTest {
      */
     @Test
     void testGenerateCdrReport_NoRecords() {
-        when(cdrRecordRepository.findByCallerNumberAndStartTimeBetweenOrReceiverNumberAndStartTimeBetween(
-                "79991112233",
-                LocalDateTime.of(2024, 3, 1, 0, 0),
-                LocalDateTime.of(2024, 3, 31, 23, 59, 59),
+        when(cdrRecordRepository.findRecordsForMsisdnInPeriod(
                 "79991112233",
                 LocalDateTime.of(2024, 3, 1, 0, 0),
                 LocalDateTime.of(2024, 3, 31, 23, 59, 59)))
@@ -206,10 +208,7 @@ class UdrServiceTest {
         record2.setStartTime(LocalDateTime.of(2024, 3, 1, 11, 0));
         record2.setEndTime(LocalDateTime.of(2024, 3, 1, 11, 10));
 
-        when(cdrRecordRepository.findByCallerNumberAndStartTimeBetweenOrReceiverNumberAndStartTimeBetween(
-                "79991112233",
-                LocalDateTime.of(2024, 3, 1, 0, 0),
-                LocalDateTime.of(2024, 3, 31, 23, 59, 59),
+        when(cdrRecordRepository.findRecordsForMsisdnInPeriod(
                 "79991112233",
                 LocalDateTime.of(2024, 3, 1, 0, 0),
                 LocalDateTime.of(2024, 3, 31, 23, 59, 59)))
@@ -235,7 +234,8 @@ class UdrServiceTest {
         record.setStartTime(LocalDateTime.of(2024, 3, 1, 10, 0));
         record.setEndTime(LocalDateTime.of(2024, 3, 1, 10, 5));
 
-        when(cdrRecordRepository.findByStartTimeBetween(
+        when(cdrRecordRepository.findRecordsForMsisdnInPeriod(
+                "79991112233",
                 LocalDateTime.of(2024, 3, 1, 0, 0),
                 LocalDateTime.of(2024, 3, 31, 23, 59, 59)))
                 .thenReturn(List.of(record));
@@ -261,7 +261,8 @@ class UdrServiceTest {
         when(cdrRecordRepository.doesNotExistByCallerNumberOrReceiverNumber(msisdn)).thenReturn(false);
         when(cdrRecordRepository.findEarliestStartTime()).thenReturn(LocalDateTime.of(2024, 3, 1, 10, 0));
         when(cdrRecordRepository.findLatestEndTime()).thenReturn(LocalDateTime.of(2024, 3, 1, 10, 5));
-        when(cdrRecordRepository.findByStartTimeBetween(
+        when(cdrRecordRepository.findRecordsForMsisdnInPeriod(
+                msisdn,
                 LocalDateTime.of(2024, 3, 1, 10, 0),
                 LocalDateTime.of(2024, 3, 1, 10, 5)))
                 .thenReturn(List.of(record1));
@@ -289,5 +290,66 @@ class UdrServiceTest {
 
         assertThat(result).isFalse();
         verify(cdrRecordRepository, times(1)).doesNotExistByCallerNumberOrReceiverNumber(msisdn);
+    }
+
+    @Test
+    void testGenerateUdrReport_NoRecordsFound() {
+        String msisdn = "79991112233";
+        String month = "2024-03";
+
+        // Мокируем репозиторий, чтобы вернуть пустой список записей
+        when(cdrRecordRepository.doesNotExistByCallerNumberOrReceiverNumber(msisdn)).thenReturn(true);
+
+        String result = udrService.generateUdrReport(msisdn, month);
+
+        assertThat(result).isEqualTo("No records found for the specified MSISDN.");
+    }
+
+    @Test
+    void testGenerateCdrReport_NoRecordsFound() {
+        String msisdn = "79991112233";
+        String startDate = "2024-03-01T00:00:00";
+        String endDate = "2024-03-31T23:59:59";
+
+        // Мокируем репозиторий, чтобы вернуть пустой список записей
+        when(cdrRecordRepository.doesNotExistByCallerNumberOrReceiverNumber(msisdn)).thenReturn(true);
+
+        Exception exception = assertThrows(RuntimeException.class, () -> {
+            udrService.generateCdrReport(msisdn, startDate, endDate);
+        });
+
+        assertThat(exception.getMessage()).isEqualTo("No records found for the specified MSISDN.");
+    }
+
+    @Test
+    void testGenerateAllUdrReports_NoRecordsFound() {
+        String month = "2024-03";
+
+        // Мокируем репозиторий, чтобы вернуть пустой список записей
+        LocalDateTime startOfMonth = LocalDateTime.parse(month + "-01T00:00:00");
+        LocalDateTime endOfMonth = startOfMonth.plusMonths(1).minusSeconds(1);
+        when(cdrRecordRepository.findByStartTimeBetween(startOfMonth, endOfMonth)).thenReturn(List.of());
+
+        String result = udrService.generateAllUdrReports(month);
+
+        assertThat(result).isEqualTo("No records found for the specified period.");
+    }
+
+    @Test
+    void testGenerateUdrReport_NoRecordsInPeriod() {
+        String msisdn = "79991112233";
+        String month = "2024-03";
+
+        // Мокируем репозиторий, чтобы вернуть пустой список записей
+        when(cdrRecordRepository.doesNotExistByCallerNumberOrReceiverNumber(msisdn)).thenReturn(false);
+        when(cdrRecordRepository.findRecordsForMsisdnInPeriod(
+                eq(msisdn),
+                eq(LocalDateTime.parse("2024-03-01T00:00:00")),
+                eq(LocalDateTime.parse("2024-03-31T23:59:59"))
+        )).thenReturn(List.of());
+
+        String result = udrService.generateUdrReport(msisdn, month);
+
+        assertThat(result).isEqualTo("No records found for the specified MSISDN.");
     }
 }
