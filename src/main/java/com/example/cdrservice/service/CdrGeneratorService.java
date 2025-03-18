@@ -12,17 +12,40 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Random;
 
+/**
+ * Сервис для генерации записей (CDR).
+ * Этот сервис создает случайные записи звонков для абонентов,
+ * сохраняет их в базу данных и обеспечивает их корректное временное упорядочение.
+ */
 @Service
 public class CdrGeneratorService {
 
     private final CdrRecordRepository cdrRecordRepository;
     private final SubscriberRepository subscriberRepository;
 
+    /**
+     * Конструктор для внедрения зависимостей.
+     *
+     * @param cdrRecordRepository   Репозиторий для работы с записями CDR.
+     * @param subscriberRepository  Репозиторий для работы с абонентами.
+     */
     public CdrGeneratorService(CdrRecordRepository cdrRecordRepository, SubscriberRepository subscriberRepository) {
         this.cdrRecordRepository = cdrRecordRepository;
         this.subscriberRepository = subscriberRepository;
     }
 
+    /**
+     * Генерирует записи CDR для всех абонентов.
+     * <p>
+     * Процесс генерации включает:
+     * <ul>
+     *   <li>Создание случайного количества звонков для каждого абонента.</li>
+     *   <li>Генерацию случайных временных меток начала и окончания звонков.</li>
+     *   <li>Выбор случайного получателя звонка (не самого себя).</li>
+     *   <li>Сохранение всех записей в базу данных после их сортировки по времени начала.</li>
+     * </ul>
+     * Звонки генерируются за последний год с преимущественным временем с 8:00 до 22:00.
+     */
     public void generateCdrRecords() {
         List<Subscriber> subscribers = subscriberRepository.findAll();
         Random random = new Random();
