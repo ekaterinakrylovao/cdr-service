@@ -68,7 +68,10 @@ public class UdrService {
             end = cdrRecordRepository.findLatestEndTime();
         }
 
-        List<CdrRecord> records = cdrRecordRepository.findByStartTimeBetween(start, end);
+        List<CdrRecord> records = cdrRecordRepository.findRecordsForMsisdnInPeriod(msisdn, start, end);
+        if (records.isEmpty()) {
+            return "No records found for the specified MSISDN.";
+        }
 
         Map<String, Duration> durations = calculateDurations(records, msisdn);
 
@@ -146,10 +149,7 @@ public class UdrService {
         LocalDateTime start = LocalDateTime.parse(startDate);
         LocalDateTime end = LocalDateTime.parse(endDate);
 
-        // Ищем записи, где абонент был либо caller, либо receiver, и звонок был в указанный период
-        List<CdrRecord> records = cdrRecordRepository.findByCallerNumberAndStartTimeBetweenOrReceiverNumberAndStartTimeBetween(
-                msisdn, start, end, msisdn, start, end);
-
+        List<CdrRecord> records = cdrRecordRepository.findRecordsForMsisdnInPeriod(msisdn, start, end);
         if (records.isEmpty()) {
             throw new RuntimeException("No records found for the specified period.");
         }
