@@ -18,6 +18,15 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
+/**
+ * Сервис для генерации отчётов по CDR-записям.
+ * Этот сервис предоставляет функциональность для создания:
+ * <ul>
+ *   <li>Индивидуальных отчётов для конкретных абонентов (UDR).</li>
+ *   <li>Консолидированных отчётов для всех абонентов за указанный период (UDR).</li>
+ *   <li>CDR-отчётов в формате CSV.</li>
+ * </ul>
+ */
 @Service
 public class UdrService {
 
@@ -27,6 +36,16 @@ public class UdrService {
         this.cdrRecordRepository = cdrRecordRepository;
     }
 
+    /**
+     * Генерирует UDR для указанного абонента.
+     * <p>
+     * Отчёт включает информацию о входящих и исходящих звонках за указанный месяц или весь доступный период.
+     *
+     * @param msisdn Номер абонента (MSISDN).
+     * @param month  Месяц в формате "YYYY-MM" (опционально). Если не указан, используется весь период.
+     * @return JSON-строка с данными общей длительности входящих и исходящих звонков.
+     *         Если записи отсутствуют, возвращается сообщение "No records found for the specified MSISDN."
+     */
     public String generateUdrReport(String msisdn, String month) {
         // Нормализация номера
         msisdn = normalizeMsisdn(msisdn);
@@ -60,6 +79,15 @@ public class UdrService {
         );
     }
 
+    /**
+     * Генерирует консолидированные отчёты для всех абонентов за указанный месяц.
+     * <p>
+     * Для каждого абонента, участвовавшего в звонках за указанный период, создается UDR.
+     *
+     * @param month Месяц в формате "YYYY-MM".
+     * @return Строка с JSON-объектами, разделенными символом новой строки (\n).
+     *         Если записи отсутствуют, возвращается сообщение "No records found for the specified period."
+     */
     public String generateAllUdrReports(String month) {
         // Преобразуем месяц в диапазон дат
         LocalDateTime startOfMonth = LocalDateTime.parse(month + "-01T00:00:00");
@@ -95,6 +123,17 @@ public class UdrService {
         return result.toString();
     }
 
+    /**
+     * Генерирует CDR-отчёт в формате CSV для указанного абонента за указанный период.
+     * <p>
+     * Отчёт сохраняется в файл в директории "reports" с именем, содержащим MSISDN и уникальный идентификатор.
+     *
+     * @param msisdn    Номер абонента (MSISDN).
+     * @param startDate Начальная дата и время периода в формате "YYYY-MM-DDTHH:mm:ss".
+     * @param endDate   Конечная дата и время периода в формате "YYYY-MM-DDTHH:mm:ss".
+     * @return Уникальный идентификатор отчёта (UUID).
+     * @throws RuntimeException Если записи отсутствуют или возникла ошибка при записи файла.
+     */
     public String generateCdrReport(String msisdn, String startDate, String endDate) {
         // Нормализация номера
         msisdn = normalizeMsisdn(msisdn);
@@ -135,6 +174,13 @@ public class UdrService {
         return reportId;
     }
 
+    /**
+     * Рассчитывает общую длительность входящих и исходящих звонков для указанного абонента.
+     *
+     * @param records Список CDR-записей.
+     * @param msisdn  Номер абонента (MSISDN).
+     * @return Карта с длительностями звонков ("incoming" и "outcoming").
+     */
     private Map<String, Duration> calculateDurations(List<CdrRecord> records, String msisdn) {
         Map<String, Duration> durations = new HashMap<>();
         durations.put("incoming", Duration.ZERO);
@@ -157,11 +203,25 @@ public class UdrService {
         return durations;
     }
 
+    /**
+     * Форматирует данные отчёта в JSON-строку.
+     *
+     * @param msisdn            Номер абонента (MSISDN).
+     * @param incomingDuration  Длительность входящих звонков.
+     * @param outcomingDuration Длительность исходящих звонков.
+     * @return JSON-строка с данными отчёта.
+     */
     private String formatUdrReport(String msisdn, Duration incomingDuration, Duration outcomingDuration) {
         return String.format("{\"msisdn\": \"%s\", \"incomingCall\": {\"totalTime\": \"%s\"}, \"outcomingCall\": {\"totalTime\": \"%s\"}}",
                 msisdn, formatDuration(incomingDuration), formatDuration(outcomingDuration));
     }
 
+    /**
+     * Форматирует длительность в строку в формате "HH:mm:ss".
+     *
+     * @param duration Длительность.
+     * @return Строка в формате "HH:mm:ss".
+     */
     private String formatDuration(Duration duration) {
         long hours = duration.toHours();
         long minutes = duration.toMinutes() % 60;
@@ -169,6 +229,12 @@ public class UdrService {
         return String.format("%02d:%02d:%02d", hours, minutes, seconds);
     }
 
+    /**
+     * Нормализует номер абонента (MSISDN), удаляя все символы, кроме цифр.
+     *
+     * @param msisdn Номер абонента (MSISDN).
+     * @return Нормализованный номер.
+     */
     private String normalizeMsisdn(String msisdn) {
         // Убираем лишние символы и приводим к стандартному формату
         return msisdn.replaceAll("[^0-9]", ""); // Оставляем только цифры
