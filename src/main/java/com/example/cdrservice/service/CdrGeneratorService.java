@@ -57,7 +57,7 @@ public class CdrGeneratorService {
         LocalDateTime startDate = LocalDateTime.now().minusYears(1);
 
         int batchSize = 100; // Размер партии
-        List<CdrRecord> batch = new ArrayList<>();
+        List<CdrRecord> allRecords = new ArrayList<>();
 
         // Временная структура для хранения интервалов звонков
         Map<String, List<LocalDateTime[]>> callIntervals = new HashMap<>();
@@ -99,21 +99,27 @@ public class CdrGeneratorService {
                 callIntervals.computeIfAbsent(subscriber.getMsisdn(), k -> new ArrayList<>())
                         .add(new LocalDateTime[]{callStart, callEnd});
 
-                batch.add(cdrRecord);
-
-                // Если размер партии достигнут, сохраняем её
-                if (batch.size() >= batchSize) {
-                    saveBatch(batch);
-                    batch.clear();
-                    callIntervals.clear(); // Очищаем временную структуру
-                }
+                allRecords.add(cdrRecord);
             }
         }
 
-        // Сохраняем оставшиеся записи
-        if (!batch.isEmpty()) {
+        // Сортируем все записи по времени начала звонков
+        allRecords.sort(Comparator.comparing(CdrRecord::getStartTime));
+
+        // Сохраняем записи в базу данных партиями
+        for (int i = 0; i < allRecords.size(); i += batchSize) {
+            List<CdrRecord> batch = allRecords.subList(i, Math.min(i + batchSize, allRecords.size()));
             saveBatch(batch);
         }
+    }
+
+    /**
+     * Сохраняет партию записей CDR в базу данных.
+     *
+     * @param batch Список записей для сохранения.
+     */
+    private void saveBatch(List<CdrRecord> batch) {
+        cdrRecordRepository.saveAll(batch); // Сохраняем партию
     }
 
     /**
@@ -138,16 +144,6 @@ public class CdrGeneratorService {
             }
         }
         return false;
-    }
-
-    /**
-     * Сохраняет партию записей CDR в базу данных.
-     *
-     * @param batch Список записей для сохранения.
-     */
-    private void saveBatch(List<CdrRecord> batch) {
-        batch.sort(Comparator.comparing(CdrRecord::getStartTime)); // Сортируем партию по времени начала
-        cdrRecordRepository.saveAll(batch); // Сохраняем партию
     }
 
     /**
