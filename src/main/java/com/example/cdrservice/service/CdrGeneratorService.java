@@ -9,7 +9,9 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 
 /**
@@ -35,14 +37,15 @@ public class CdrGeneratorService {
     }
 
     /**
-     * Генерирует записи CDR для всех абонентов.
+     * Генерирует записи CDR для всех абонентов за последний год.
      * <p>
      * Процесс генерации включает:
      * <ul>
      *   <li>Создание случайного количества звонков для каждого абонента.</li>
      *   <li>Генерацию случайных временных меток начала и окончания звонков.</li>
      *   <li>Выбор случайного получателя звонка (не самого себя).</li>
-     *   <li>Сохранение всех записей в базу данных после их сортировки по времени начала.</li>
+     *   <li>Проверку на пересечение временных интервалов для каждого абонента.</li>
+     *   <li>Сохранение записей в базу данных партиями для повышения производительности.</li>
      * </ul>
      * Звонки генерируются за последний год с преимущественным временем с 8:00 до 22:00.
      */
@@ -53,24 +56,31 @@ public class CdrGeneratorService {
         // Начальная точка: текущее время минус 1 год
         LocalDateTime startDate = LocalDateTime.now().minusYears(1);
 
-        List<CdrRecord> allCdrRecords = new ArrayList<>();
+        int batchSize = 100; // Размер партии
+        List<CdrRecord> batch = new ArrayList<>();
+
+        // Временная структура для хранения интервалов звонков
+        Map<String, List<LocalDateTime[]>> callIntervals = new HashMap<>();
 
         for (Subscriber subscriber : subscribers) {
             int numberOfCalls = random.nextInt(100) + 1; // От 1 до 100 звонков на абонента
             for (int i = 0; i < numberOfCalls; i++) {
-                // Генерация времени начала звонка (преимущественно с 8:00 до 22:00)
-                int hour = 8 + random.nextInt(14); // Случайный час от 8 до 21
-                int minute = random.nextInt(60);
-                int second = random.nextInt(60);
+                LocalDateTime callStart;
+                LocalDateTime callEnd;
 
-                LocalDateTime callStart = startDate.plusDays(random.nextInt(365))
-                        .withHour(hour)
-                        .withMinute(minute)
-                        .withSecond(second);
+                boolean isValidCall;
+                do {
+                    // Генерация времени начала звонка
+                    callStart = generateRandomDateTime(startDate, LocalDateTime.now(), random);
 
-                // Генерация длительности звонка: от 10 секунд до 2 часов
-                long callDurationSeconds = 10 + random.nextInt(7200 - 10); // От 10 секунд до 2 часов (7200 секунд)
-                LocalDateTime callEnd = callStart.plusSeconds(callDurationSeconds);
+                    // Генерация длительности звонка
+                    long callDurationSeconds = 10 + random.nextInt(7200 - 10); // От 10 секунд до 2 часов
+                    callEnd = callStart.plusSeconds(callDurationSeconds);
+
+                    // Проверка на пересечение временных интервалов
+                    isValidCall = !isOverlapping(callIntervals, subscriber.getMsisdn(), callStart, callEnd);
+
+                } while (!isValidCall);
 
                 // Выбираем случайного абонента для звонка, но не самого себя
                 Subscriber receiver;
@@ -85,14 +95,75 @@ public class CdrGeneratorService {
                 cdrRecord.setStartTime(callStart);
                 cdrRecord.setEndTime(callEnd);
 
-                allCdrRecords.add(cdrRecord);
+                // Добавляем интервал в временную структуру
+                callIntervals.computeIfAbsent(subscriber.getMsisdn(), k -> new ArrayList<>())
+                        .add(new LocalDateTime[]{callStart, callEnd});
+
+                batch.add(cdrRecord);
+
+                // Если размер партии достигнут, сохраняем её
+                if (batch.size() >= batchSize) {
+                    saveBatch(batch);
+                    batch.clear();
+                    callIntervals.clear(); // Очищаем временную структуру
+                }
             }
         }
 
-        // Сортируем все звонки по времени начала
-        allCdrRecords.sort(Comparator.comparing(CdrRecord::getStartTime));
+        // Сохраняем оставшиеся записи
+        if (!batch.isEmpty()) {
+            saveBatch(batch);
+        }
+    }
 
-        // Сохраняем звонки в базу данных
-        cdrRecordRepository.saveAll(allCdrRecords);
+    /**
+     * Проверяет, пересекается ли новый звонок с существующими интервалами для абонента.
+     *
+     * @param callIntervals Временные интервалы звонков.
+     * @param msisdn        Номер абонента.
+     * @param start         Начало нового звонка.
+     * @param end           Конец нового звонка.
+     * @return true, если есть пересечение; иначе false.
+     */
+    private boolean isOverlapping(Map<String, List<LocalDateTime[]>> callIntervals, String msisdn, LocalDateTime start, LocalDateTime end) {
+        List<LocalDateTime[]> intervals = callIntervals.get(msisdn);
+        if (intervals == null) {
+            return false;
+        }
+        for (LocalDateTime[] interval : intervals) {
+            LocalDateTime existingStart = interval[0];
+            LocalDateTime existingEnd = interval[1];
+            if (!(end.isBefore(existingStart) || start.isAfter(existingEnd))) {
+                return true; // Пересечение найдено
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Сохраняет партию записей CDR в базу данных.
+     *
+     * @param batch Список записей для сохранения.
+     */
+    private void saveBatch(List<CdrRecord> batch) {
+        batch.sort(Comparator.comparing(CdrRecord::getStartTime)); // Сортируем партию по времени начала
+        cdrRecordRepository.saveAll(batch); // Сохраняем партию
+    }
+
+    /**
+     * Генерирует случайную дату и время в указанном диапазоне.
+     * <p>
+     * Время генерируется преимущественно с 8:00 до 22:00 для соответствия реальным условиям использования.
+     *
+     * @param start  Начальная дата и время.
+     * @param end    Конечная дата и время.
+     * @param random Объект Random для генерации случайных чисел.
+     * @return Случайная дата и время в диапазоне [start, end].
+     */
+    private LocalDateTime generateRandomDateTime(LocalDateTime start, LocalDateTime end, Random random) {
+        long startEpochSecond = start.toEpochSecond(java.time.ZoneOffset.UTC);
+        long endEpochSecond = end.toEpochSecond(java.time.ZoneOffset.UTC);
+        long randomEpochSecond = startEpochSecond + random.nextInt((int) (endEpochSecond - startEpochSecond));
+        return LocalDateTime.ofEpochSecond(randomEpochSecond, 0, java.time.ZoneOffset.UTC);
     }
 }
