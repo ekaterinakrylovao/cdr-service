@@ -13,6 +13,8 @@ import java.util.Arrays;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class UdrServiceTest {
@@ -241,5 +243,51 @@ class UdrServiceTest {
         String result = udrService.generateUdrReport(msisdn, month);
 
         assertThat(result).contains("\"msisdn\": \"79991112233\"");
+    }
+
+    /**
+     * Использование findEarliestStartTime и findLatestEndTime.
+     */
+    @Test
+    void testGenerateUdrReport_WithoutMonth() {
+        String msisdn = "79991112233";
+
+        CdrRecord record1 = new CdrRecord();
+        record1.setCallType("01");
+        record1.setCallerNumber(msisdn);
+        record1.setStartTime(LocalDateTime.of(2024, 3, 1, 10, 0));
+        record1.setEndTime(LocalDateTime.of(2024, 3, 1, 10, 5));
+
+        when(cdrRecordRepository.doesNotExistByCallerNumberOrReceiverNumber(msisdn)).thenReturn(false);
+        when(cdrRecordRepository.findEarliestStartTime()).thenReturn(LocalDateTime.of(2024, 3, 1, 10, 0));
+        when(cdrRecordRepository.findLatestEndTime()).thenReturn(LocalDateTime.of(2024, 3, 1, 10, 5));
+        when(cdrRecordRepository.findByStartTimeBetween(
+                LocalDateTime.of(2024, 3, 1, 10, 0),
+                LocalDateTime.of(2024, 3, 1, 10, 5)))
+                .thenReturn(List.of(record1));
+
+        String result = udrService.generateUdrReport(msisdn, null);
+
+        assertThat(result).contains("\"msisdn\": \"79991112233\"");
+        assertThat(result).contains("\"totalTime\": \"00:05:00\""); // Исходящие
+        assertThat(result).contains("\"totalTime\": \"00:00:00\""); // Входящие
+
+        verify(cdrRecordRepository, times(1)).findEarliestStartTime();
+        verify(cdrRecordRepository, times(1)).findLatestEndTime();
+    }
+
+    /**
+     * Записи с указанным msisdn существуют.
+     */
+    @Test
+    void testDoesNotExistByCallerNumberOrReceiverNumber_RecordExists() {
+        String msisdn = "79991112233";
+
+        when(cdrRecordRepository.doesNotExistByCallerNumberOrReceiverNumber(msisdn)).thenReturn(false);
+
+        boolean result = cdrRecordRepository.doesNotExistByCallerNumberOrReceiverNumber(msisdn);
+
+        assertThat(result).isFalse();
+        verify(cdrRecordRepository, times(1)).doesNotExistByCallerNumberOrReceiverNumber(msisdn);
     }
 }
