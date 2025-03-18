@@ -12,11 +12,12 @@ import java.nio.file.Paths;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Сервис для генерации отчётов по CDR-записям.
@@ -104,24 +105,23 @@ public class UdrService {
         }
 
         // Собираем уникальные номера абонентов
-        Set<String> allMsisdns = new HashSet<>();
-        records.forEach(record -> {
-            allMsisdns.add(record.getCallerNumber());
-            allMsisdns.add(record.getReceiverNumber());
-        });
+        Set<String> allMsisdns = records.parallelStream()
+                .flatMap(record -> Stream.of(record.getCallerNumber(), record.getReceiverNumber()))
+                .collect(Collectors.toSet());
 
         StringBuilder result = new StringBuilder();
-        for (String msisdn : allMsisdns) {
+        allMsisdns.parallelStream().forEach(msisdn -> {
             // Рассчитываем длительность звонков для каждого абонента
             Map<String, Duration> durations = calculateDurations(records, msisdn);
-
-            result.append(formatUdrReport(
+            String report = formatUdrReport(
                     msisdn,
                     durations.get("incoming"),
                     durations.get("outcoming")
-            ));
-            result.append("\n");
-        }
+            );
+            synchronized (result) {
+                result.append(report).append("\n");
+            }
+        });
 
         return result.toString();
     }
