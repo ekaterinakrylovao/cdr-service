@@ -159,7 +159,7 @@ mvn test
 
     Покрытие текущего проекта:
 
-    ![Image](https://github.com/user-attachments/assets/4393cf8d-0796-4571-bf05-c4fae2fa6d43)
+    ![Image](https://github.com/user-attachments/assets/5b0bfbdb-a0c8-434f-a11f-35f398ffbea5)
 
 ---
 
