@@ -2,6 +2,10 @@ package com.example.cdrservice.entity;
 
 import jakarta.persistence.*;
 
+/**
+ * Сущность, представляющая абонента.
+ * Хранит номер абонента (MSISDN).
+ */
 @Entity
 public class Subscriber {
     @Id

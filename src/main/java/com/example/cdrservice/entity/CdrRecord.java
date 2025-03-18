@@ -3,6 +3,11 @@ package com.example.cdrservice.entity;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
+/**
+ * Сущность, представляющая запись CDR.
+ * Хранит информацию о звонках абонентов, включая тип вызова,
+ * номера абонентов и временные метки начала и окончания звонка.
+ */
 @Entity
 public class CdrRecord {
     @Id
